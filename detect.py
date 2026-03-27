@@ -1,12 +1,13 @@
 # YOLOv5 detection + Arduino (Servo + ESC Integration with Red & Green Ball Filter + Center Line)
 
 import os
-import sys
 import pathlib
-from pathlib import Path
-import torch
-import serial
+import sys
 import time
+from pathlib import Path
+
+import serial
+import torch
 
 # Patch Path untuk Windows
 pathlib.PosixPath = pathlib.WindowsPath
@@ -20,6 +21,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 # YOLOv5 imports
 from ultralytics.utils.plotting import Annotator, colors
+
 from models.common import DetectMultiBackend
 from utils.dataloaders import LoadImages, LoadStreams
 from utils.general import check_img_size, cv2, non_max_suppression, scale_boxes
@@ -28,7 +30,7 @@ from utils.torch_utils import select_device, smart_inference_mode
 # ----------------- Serial Arduino -----------------
 arduino = None
 try:
-    arduino = serial.Serial('COM3', 9600, timeout=1)  # ganti COM sesuai port
+    arduino = serial.Serial("COM3", 9600, timeout=1)  # ganti COM sesuai port
     time.sleep(2)
     print("✅ Arduino connected on COM3")
 
@@ -39,10 +41,11 @@ try:
 except Exception as e:
     print("⚠️ Arduino tidak terhubung:", e)
 
+
 @smart_inference_mode()
 def run(
-    weights=ROOT / "best.pt",   # model hasil training
-    source=0,                   # webcam
+    weights=ROOT / "best.pt",  # model hasil training
+    source=0,  # webcam
     data=ROOT / "data/coco128.yaml",
     imgsz=(640, 640),
     conf_thres=0.25,
@@ -150,13 +153,15 @@ def run(
                         arduino.write(b"CENTER\n")
                         print("⚙️ Servo diset ke tengah (shutdown)")
 
-                    if hasattr(dataset, 'cap') and dataset.cap:
+                    if hasattr(dataset, "cap") and dataset.cap:
                         dataset.cap.release()
                     cv2.destroyAllWindows()
                     return
 
+
 def main():
     run()
+
 
 if __name__ == "__main__":
     main()

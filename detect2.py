@@ -2,12 +2,13 @@
 # Perubahan: smooth inference + minimal drawing + non-blocking serial + vid_stride support
 
 import os
-import sys
 import pathlib
-from pathlib import Path
-import torch
-import serial
+import sys
 import time
+from pathlib import Path
+
+import serial
+import torch
 
 # Patch Path untuk Windows
 pathlib.PosixPath = pathlib.WindowsPath
@@ -20,6 +21,7 @@ ROOT = Path(os.path.relpath(ROOT, Path.cwd()))
 
 # YOLOv5 imports
 from ultralytics.utils.plotting import Annotator, colors
+
 from models.common import DetectMultiBackend
 from utils.dataloaders import LoadImages, LoadStreams
 from utils.general import check_img_size, cv2, non_max_suppression, scale_boxes
@@ -36,22 +38,23 @@ except Exception as e:
     print("⚠️ Arduino tidak terhubung:", e)
     arduino = None
 
+
 @smart_inference_mode()
 def run(
-    weights=ROOT / "best.pt",        # model hasil training (ganti ke yolov5n.pt untuk lebih cepat)
-    source=0,                        # webcam (0)
+    weights=ROOT / "best.pt",  # model hasil training (ganti ke yolov5n.pt untuk lebih cepat)
+    source=0,  # webcam (0)
     data=ROOT / "data/coco128.yaml",
-    imgsz=(640, 640),                # ukuran inferensi (sesuaikan; 640 mempertahankan kualitas)
+    imgsz=(640, 640),  # ukuran inferensi (sesuaikan; 640 mempertahankan kualitas)
     conf_thres=0.25,
     iou_thres=0.45,
     max_det=1000,
-    device="",                       # "" => otomatis (GPU kalau ada)
+    device="",  # "" => otomatis (GPU kalau ada)
     view_img=True,
     classes=None,
     line_thickness=2,
-    vid_stride=1,                    # lewati frame input (1 = semua frame, 2 = proses tiap 2nd frame)
-    half=False,                      # pakai FP16 jika memungkinkan
-    send_threshold_px=8,             # minimal pergeseran mid_x untuk kirim update ke Arduino
+    vid_stride=1,  # lewati frame input (1 = semua frame, 2 = proses tiap 2nd frame)
+    half=False,  # pakai FP16 jika memungkinkan
+    send_threshold_px=8,  # minimal pergeseran mid_x untuk kirim update ke Arduino
 ):
     source = str(source)
     webcam = source.isnumeric() or source.endswith(".streams")
@@ -69,7 +72,6 @@ def run(
         dataset = LoadImages(source, img_size=imgsz, stride=stride, auto=pt)
 
     # warmup (sesuaikan batch size kecil/1)
-    bs = 1
     model.warmup(imgsz=(1, 3, *imgsz))
 
     last_mid_x = None  # untuk mengurangi kirim serial berulang jika tidak banyak berubah
@@ -91,9 +93,9 @@ def run(
         # proses tiap item di batch (pada webcam biasanya bs = jumlah stream)
         for i, det in enumerate(pred):
             if webcam:
-                p, im0 = path[i], im0s[i].copy()
+                _p, im0 = path[i], im0s[i].copy()
             else:
-                p, im0 = path, im0s.copy()
+                _p, im0 = path, im0s.copy()
 
             # Buat annotator sekali per-frame
             annotator = Annotator(im0, line_width=line_thickness, example=str(names))
@@ -140,7 +142,11 @@ def run(
 
                 # Kirim ke Arduino hanya jika berubah lebih dari threshold pixel
                 send = False
-                if last_mid_x is None or abs(mid_x - last_mid_x) >= send_threshold_px or abs(mid_y - last_mid_y) >= send_threshold_px:
+                if (
+                    last_mid_x is None
+                    or abs(mid_x - last_mid_x) >= send_threshold_px
+                    or abs(mid_y - last_mid_y) >= send_threshold_px
+                ):
                     send = True
 
                 if send and arduino:
@@ -193,12 +199,13 @@ def main():
         imgsz=(640, 640),
         conf_thres=0.25,
         iou_thres=0.45,
-        device="",         # set "0" jika ingin pakai GPU 0
+        device="",  # set "0" jika ingin pakai GPU 0
         view_img=True,
-        vid_stride=1,      # ubah ke 2 jika mau proses lebih ringan
-        half=False,        # True jika ingin fp16 (jika GPU mendukung)
-        send_threshold_px=6
+        vid_stride=1,  # ubah ke 2 jika mau proses lebih ringan
+        half=False,  # True jika ingin fp16 (jika GPU mendukung)
+        send_threshold_px=6,
     )
+
 
 if __name__ == "__main__":
     main()
